@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">GoogleSignInTest</string>
+    <string name="copy_to_clipboard">Copy to clipboard</string>
+    <string name="shorten">Shorten</string>
+    <string name="enter_long_url">Enter a long URL</string>
+    <string name="default_long_url">http://www.pointtown.com</string>
+    <string name="shortening_failure">Shortening failure</string>
+    <string name="open">Open</string>
+    <string name="please_enter_the_url">Please enter the url</string>
+    <string name="loading">Loading…</string>
+    <string name="shortening_completion">Shortening completion</string>
+    <string name="signed_in">Sign in with %s</string>
+    <string name="failed_to_signed_in">Failed to signed in</string>
 </resources>

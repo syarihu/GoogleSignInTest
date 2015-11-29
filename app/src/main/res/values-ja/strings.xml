@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GoogleSignInTest</string>
+    <string name="copy_to_clipboard">クリップボードにコピーしました</string>
+    <string name="shorten">短縮</string>
+    <string name="enter_long_url">短縮したいURLを入力</string>
+    <string name="default_long_url">http://www.pointtown.com</string>
+    <string name="shortening_failure">短縮しっぱい！</string>
+    <string name="open">開く</string>
+    <string name="please_enter_the_url">URLを入力してね！</string>
+    <string name="loading">読み込み中…</string>
+    <string name="shortening_completion">URL短縮完了！</string>
+    <string name="signed_in">%s でサインインしました</string>
+    <string name="failed_to_signed_in">サインインに失敗しました</string>
+</resources>

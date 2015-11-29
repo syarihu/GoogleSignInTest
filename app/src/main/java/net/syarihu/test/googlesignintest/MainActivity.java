@@ -1,14 +1,24 @@
 package net.syarihu.test.googlesignintest;
 
+import android.accounts.Account;
+import android.app.ProgressDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 
+import com.google.android.gms.auth.GoogleAuthException;
+import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
@@ -16,6 +26,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.OptionalPendingResult;
+import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Scope;
 
 import org.json.JSONException;
@@ -30,8 +42,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.OnConnectionFailedListener, View.OnClickListener {
-
     private static final String TAG = "MainActivity";
+    private static final String SHORTENER_SCOPE = "https://www.googleapis.com/auth/urlshortener";
+    private static final String ACCOUNT_TYPE = "com.google";
     GoogleApiClient mGoogleApiClient;
     TextView mStatusTextView;
     Scope mScope;
@@ -43,42 +56,98 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mScope = new Scope("https://www.googleapis.com/auth/urlshortener");
+        mScope = new Scope(SHORTENER_SCOPE);
         mGoogleSignInOptions = new GoogleSignInOptions
                 .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestScopes(mScope)
-                .requestProfile()
                 .requestEmail()
                 .build();
 
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this /* FragmentActivity */, this /* OnConnectionFailedListener */)
-                .addScope(mScope)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, mGoogleSignInOptions)
+                .addScope(mScope)
                 .build();
+        mGoogleApiClient.connect();
 
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
-//        signInButton.setScopes(new Scope[]{new Scope(Scopes.PLUS_LOGIN)});
-//        signInButton.setSize(SignInButton.SIZE_WIDE);
         signInButton.setScopes(mGoogleSignInOptions.getScopeArray());
         signInButton.setOnClickListener(this);
         mStatusTextView = (TextView) findViewById(R.id.status);
+        findViewById(R.id.btn_shorten).setOnClickListener(this);
+        findViewById(R.id.long_uri).setOnKeyListener(new View.OnKeyListener() {
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
+                    shorten(((EditText)findViewById(R.id.long_uri)).getText().toString());
+                    return true;
+                }
+                return false;
+            }
+        });
+        mStatusTextView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                cm.setPrimaryClip(ClipData.newPlainText("", ((TextView)v).getText()));
+                showClipboardSnackBar(((TextView)v).getText().toString());
+                return true;
+            }
+        });
+    }
+
+    private void showSnackBar(String message) {
+        Snackbar.make(findViewById(R.id.main_root), message, Snackbar.LENGTH_LONG).show();
+    }
+
+    private void showClipboardSnackBar(final String uri) {
+        Snackbar.make(findViewById(R.id.main_root), R.string.copy_to_clipboard, Snackbar.LENGTH_LONG)
+                .setAction(R.string.open, new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                        startActivity(intent);
+                    }
+                })
+                .show();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        OptionalPendingResult<GoogleSignInResult> opr = Auth.GoogleSignInApi.silentSignIn(mGoogleApiClient);
+        if (opr.isDone()) {
+            GoogleSignInResult result = opr.get();
+            handleSignInResult(result);
+            showShortenBox(true);
+            showSignInButton(false);
+        } else {
+            opr.setResultCallback(new ResultCallback<GoogleSignInResult>() {
+                @Override
+                public void onResult(GoogleSignInResult googleSignInResult) {
+                    showSignInButton(true);
+                    showShortenBox(false);
+                }
+            });
+        }
     }
 
     @Override
     public void onClick(View v) {
-        if(v.getId() == R.id.sign_in_button) {
+        if (v.getId() == R.id.sign_in_button) {
             signIn();
+        } else if (v.getId() == R.id.btn_shorten) {
+            shorten(((EditText) findViewById(R.id.long_uri)).getText().toString());
         }
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        // Result returned from launching the Intent from GoogleSignInApi.getSignInIntent(...);
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+            if(result.isSuccess()) {
+                showSnackBar(String.format(getString(R.string.signed_in), result.getSignInAccount().getEmail()));
+            }
             handleSignInResult(result);
         }
     }
@@ -86,13 +155,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
     private void handleSignInResult(GoogleSignInResult result) {
         Log.d(TAG, "handleSignInResult:" + result.isSuccess());
         if (result.isSuccess()) {
-            // サインインが成功したら、サインインボタンを消して、ユーザー名を表示する
             mGoogleSignInAccount = result.getSignInAccount();
-            mStatusTextView.setText("DisplayName: " + mGoogleSignInAccount.getDisplayName());
-            updateUI(true);
+            showSignInButton(false);
+            showShortenBox(true);
         } else {
-            // サインアウトしたら、サインインボタンを表示する
-            updateUI(false);
+            showSnackBar(getString(R.string.failed_to_signed_in));
         }
     }
 
@@ -101,37 +168,53 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
 
-    private void updateUI(boolean signedIn) {
-        if (signedIn) {
-            findViewById(R.id.sign_in_button).setVisibility(View.GONE);
-        } else {
-            mStatusTextView.setText("status: サインアウト");
-            findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
-        }
-    }
-
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
     }
 
-    public void shorten(final String authToken) {
-        new AsyncTask<Void, Void, Boolean>() {
-            boolean mResult;
+    /**
+     * URLを短縮する
+     * */
+    public void shorten(final String longUrl) {
+        if (TextUtils.isEmpty(longUrl)) {
+            updateStatus(getString(R.string.please_enter_the_url));
+            return;
+        }
+        new AsyncTask<Void, Integer, String>() {
+            ProgressDialog mProgressDialog;
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                mProgressDialog = new ProgressDialog(MainActivity.this);
+                mProgressDialog.setMessage(getString(R.string.loading));
+                mProgressDialog.setCancelable(false);
+                mProgressDialog.show();
+            }
 
             @Override
-            protected Boolean doInBackground(Void... voids) {
-                mResult = true;
+            protected String doInBackground(Void... voids) {
+                String accessToken = "";
+                String postResponse = "";
+                try {
+                    accessToken = GoogleAuthUtil.getToken(
+                            MainActivity.this,
+                            new Account(mGoogleSignInAccount.getEmail(), ACCOUNT_TYPE),
+                            "oauth2:" + SHORTENER_SCOPE
+                    );
+                    Log.d(TAG, "accessToken: " + accessToken);
+                } catch (IOException | GoogleAuthException e) {
+                    e.printStackTrace();
+                }
                 try {
                     // POST URLの生成
                     Uri.Builder builder = new Uri.Builder();
                     builder.path("https://www.googleapis.com/urlshortener/v1/url");
-                    // AccountManagerで取得したAuthTokenをaccess_tokenパラメータにセットする
-                    builder.appendQueryParameter("access_token", authToken);
+                    builder.appendQueryParameter("access_token", accessToken);
                     String postUrl = Uri.decode(builder.build().toString());
 
                     JSONObject jsonRequest = new JSONObject();
-                    jsonRequest.put("longUrl", "http://www.google.co.jp/");
+                    jsonRequest.put("longUrl", longUrl);
                     URL url = new URL(postUrl);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setRequestMethod("POST");
@@ -146,7 +229,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
                     InputStream is = conn.getInputStream();
                     BufferedReader reader = new BufferedReader(new InputStreamReader(is));
                     String s;
-                    String postResponse = "";
                     while ((s = reader.readLine()) != null) {
                         postResponse += s + "\n";
                     }
@@ -157,21 +239,50 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
                     // エラー判定
                     if (shortenInfo.has("error")) {
                         Log.e(TAG, postResponse);
-                        mResult = false;
+                    } else {
+                        return shortenInfo.getString("id");
                     }
                 } catch (IOException | JSONException e) {
                     e.printStackTrace();
-                    mResult = false;
                 }
                 Log.v(TAG, "shorten finished.");
 
-                return mResult;
+                return postResponse;
             }
 
             @Override
-            protected void onPostExecute(Boolean result) {
-                if (result) return;
+            protected void onPostExecute(String result) {
+                mProgressDialog.dismiss();
+                if (TextUtils.isEmpty(result)) {
+                    updateStatus(getString(R.string.shortening_failure));
+                    showSnackBar(getString(R.string.shortening_failure));
+                    return;
+                }
+                Log.d(TAG, result);
+                mStatusTextView.setText(result);
+                showSnackBar(getString(R.string.shortening_completion));
             }
         }.execute();
+    }
+
+    private void updateStatus(String status) {
+        if (mStatusTextView == null) return;
+        mStatusTextView.setText(status);
+    }
+
+    /**
+     * URL短縮のためのUIの表示状態を変える
+     */
+    private void showShortenBox(boolean visible) {
+        if (visible) findViewById(R.id.shorten_box).setVisibility(View.VISIBLE);
+        if (!visible) findViewById(R.id.shorten_box).setVisibility(View.GONE);
+    }
+
+    private void showSignInButton(boolean isVisible) {
+        if (isVisible) {
+            findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
+        } else {
+            findViewById(R.id.sign_in_button).setVisibility(View.GONE);
+        }
     }
 }
