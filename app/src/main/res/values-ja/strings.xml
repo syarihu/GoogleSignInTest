@@ -12,4 +12,5 @@
     <string name="shortening_completion">URL短縮完了！</string>
     <string name="signed_in">%s でサインインしました</string>
     <string name="failed_to_signed_in">サインインに失敗しました</string>
+    <string name="signed_out">サインアウトしました</string>
 </resources>

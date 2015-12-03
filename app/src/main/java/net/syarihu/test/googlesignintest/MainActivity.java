@@ -29,6 +29,7 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.OptionalPendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.common.api.Status;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -73,12 +74,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
         signInButton.setScopes(mGoogleSignInOptions.getScopeArray());
         signInButton.setOnClickListener(this);
+        findViewById(R.id.sign_out_button).setOnClickListener(this);
         mStatusTextView = (TextView) findViewById(R.id.status);
         findViewById(R.id.btn_shorten).setOnClickListener(this);
         findViewById(R.id.long_uri).setOnKeyListener(new View.OnKeyListener() {
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-                    shorten(((EditText)findViewById(R.id.long_uri)).getText().toString());
+                    shorten(((EditText) findViewById(R.id.long_uri)).getText().toString());
                     return true;
                 }
                 return false;
@@ -88,8 +90,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
             @Override
             public boolean onLongClick(View v) {
                 ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                cm.setPrimaryClip(ClipData.newPlainText("", ((TextView)v).getText()));
-                showClipboardSnackBar(((TextView)v).getText().toString());
+                cm.setPrimaryClip(ClipData.newPlainText("", ((TextView) v).getText()));
+                showClipboardSnackBar(((TextView) v).getText().toString());
                 return true;
             }
         });
@@ -135,6 +137,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
     public void onClick(View v) {
         if (v.getId() == R.id.sign_in_button) {
             signIn();
+        } else if(v.getId() == R.id.sign_out_button) {
+            signOut();
         } else if (v.getId() == R.id.btn_shorten) {
             shorten(((EditText) findViewById(R.id.long_uri)).getText().toString());
         }
@@ -145,8 +149,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-            if(result.isSuccess()) {
+            if (result.isSuccess()) {
                 showSnackBar(String.format(getString(R.string.signed_in), result.getSignInAccount().getEmail()));
+            } else {
+
             }
             handleSignInResult(result);
         }
@@ -168,6 +174,19 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         startActivityForResult(signInIntent, RC_SIGN_IN);
     }
 
+    private void signOut() {
+        Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
+            new ResultCallback<Status>() {
+                @Override
+                public void onResult(Status status) {
+                    showSnackBar(getString(R.string.signed_out));
+                    showSignInButton(true);
+                    showShortenBox(false);
+                }
+        });
+    }
+
+
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
 
@@ -175,7 +194,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
 
     /**
      * URLを短縮する
-     * */
+     */
     public void shorten(final String longUrl) {
         if (TextUtils.isEmpty(longUrl)) {
             updateStatus(getString(R.string.please_enter_the_url));
@@ -183,6 +202,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         }
         new AsyncTask<Void, Integer, String>() {
             ProgressDialog mProgressDialog;
+
             @Override
             protected void onPreExecute() {
                 super.onPreExecute();
@@ -281,7 +301,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
     private void showSignInButton(boolean isVisible) {
         if (isVisible) {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
+            findViewById(R.id.sign_out_button).setVisibility(View.GONE);
         } else {
+            findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
         }
     }

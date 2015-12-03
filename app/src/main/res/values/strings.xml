@@ -11,4 +11,5 @@
     <string name="shortening_completion">Shortening completion</string>
     <string name="signed_in">Sign in with %s</string>
     <string name="failed_to_signed_in">Failed to signed in</string>
+    <string name="signed_out">Signed out</string>
 </resources>
