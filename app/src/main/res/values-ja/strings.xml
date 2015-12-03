@@ -4,7 +4,7 @@
     <string name="copy_to_clipboard">クリップボードにコピーしました</string>
     <string name="shorten">短縮</string>
     <string name="enter_long_url">短縮したいURLを入力</string>
-    <string name="default_long_url">http://www.pointtown.com</string>
+    <string name="default_long_url">http://www.google.com</string>
     <string name="shortening_failure">短縮しっぱい！</string>
     <string name="open">開く</string>
     <string name="please_enter_the_url">URLを入力してね！</string>
