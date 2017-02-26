@@ -72,7 +72,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         mGoogleApiClient.connect();
 
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
-        signInButton.setScopes(mGoogleSignInOptions.getScopeArray());
         signInButton.setOnClickListener(this);
         findViewById(R.id.sign_out_button).setOnClickListener(this);
         mStatusTextView = (TextView) findViewById(R.id.status);
@@ -263,7 +262,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
                         return shortenInfo.getString("id");
                     }
                 } catch (IOException | JSONException e) {
-                    e.printStackTrace();
+                    Log.e("MainActivity", "", e);
                 }
                 Log.v(TAG, "shorten finished.");
 
