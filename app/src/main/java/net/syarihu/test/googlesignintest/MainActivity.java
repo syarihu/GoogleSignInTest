@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -121,10 +122,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
             handleSignInResult(result);
             showShortenBox(true);
             showSignInButton(false);
+            showSnackBar(getSignInMessage(result));
+            updateStatus(getSignInMessage(result));
         } else {
             opr.setResultCallback(new ResultCallback<GoogleSignInResult>() {
                 @Override
-                public void onResult(GoogleSignInResult googleSignInResult) {
+                public void onResult(@NonNull GoogleSignInResult googleSignInResult) {
                     showSignInButton(true);
                     showShortenBox(false);
                 }
@@ -149,9 +152,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
             if (result.isSuccess()) {
-                showSnackBar(String.format(getString(R.string.signed_in), result.getSignInAccount().getEmail()));
-            } else {
-
+                showSnackBar(getSignInMessage(result));
             }
             handleSignInResult(result);
         }
@@ -177,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
             new ResultCallback<Status>() {
                 @Override
-                public void onResult(Status status) {
+                public void onResult(@NonNull Status status) {
                     showSnackBar(getString(R.string.signed_out));
                     showSignInButton(true);
                     showShortenBox(false);
@@ -185,9 +186,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
         });
     }
 
-
     @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
     }
 
@@ -285,7 +285,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
     }
 
     private void updateStatus(String status) {
-        if (mStatusTextView == null) return;
+        if (mStatusTextView == null)
+            return;
+        if (TextUtils.isEmpty(status))
+            mStatusTextView.setVisibility(View.GONE);
+        else
+            mStatusTextView.setVisibility(View.VISIBLE);
         mStatusTextView.setText(status);
     }
 
@@ -293,8 +298,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
      * URL短縮のためのUIの表示状態を変える
      */
     private void showShortenBox(boolean visible) {
-        if (visible) findViewById(R.id.shorten_box).setVisibility(View.VISIBLE);
-        if (!visible) findViewById(R.id.shorten_box).setVisibility(View.GONE);
+        if (visible) {
+            findViewById(R.id.shorten_box).setVisibility(View.VISIBLE);
+        } else {
+            findViewById(R.id.shorten_box).setVisibility(View.GONE);
+        }
     }
 
     private void showSignInButton(boolean isVisible) {
@@ -305,5 +313,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
         }
+    }
+
+    private String getSignInMessage(@NonNull GoogleSignInResult result) {
+        if (result.getSignInAccount() == null)
+            return "";
+        return String.format(getString(R.string.signed_in), result.getSignInAccount().getEmail());
     }
 }
