@@ -182,6 +182,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.O
                     showSnackBar(getString(R.string.signed_out));
                     showSignInButton(true);
                     showShortenBox(false);
+                    updateStatus("");
                 }
         });
     }
